@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from agmarknet import get_prices
 
 app = FastAPI()
 
@@ -7,8 +8,5 @@ def home():
     return {"message": "AgriPrice Backend Running"}
 
 @app.get("/prices")
-def get_prices():
-    # This function will call the get_prices function from agmarknet.py
-    from agmarknet import get_prices as fetch_prices
-    prices = fetch_prices()
-    return prices
+def prices(commodity: str):
+    return get_prices(commodity)

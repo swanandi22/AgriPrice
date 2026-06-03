@@ -1,6 +1,6 @@
-def get_prices():
+def get_prices(commodity):
     return {
-        "commodity": "Wheat",
+        "commodity": commodity,
         "price": 2000,
         "unit": "Quintal",
         "market": "Delhi"
