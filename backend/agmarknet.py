@@ -1,9 +1,22 @@
+
 from agmarknet_loader import get_commodity_data, get_all_commodities, get_all_districts, get_markets_by_district
 
 CSV_FILE = "Daily Price Arrival Report-03-06-2026 to 03-06-2026 for Maharashtra.csv"
 
 
+# Return price records for a commodity, optionally filtered
 def get_prices(commodity, district=None, market=None):
+    """Retrieve price rows for a commodity with optional filters.
+
+    Args:
+        commodity: Commodity name to query.
+        district: Optional district name to filter results.
+        market: Optional market name to filter results.
+
+    Returns:
+        List of dicts containing `District`, `Market`, `Min Price`,
+        `Max Price` and `Modal Price`, or a message when no data found.
+    """
     data = get_commodity_data(CSV_FILE, commodity, district, market)
 
     if data.empty:
@@ -20,7 +33,19 @@ def get_prices(commodity, district=None, market=None):
     ].to_dict(orient="records")
 
 
+# Return summary statistics for a commodity across markets
 def get_summary(commodity, district=None, market=None):
+    """Compute simple statistics (average/high/low) for modal prices.
+
+    Args:
+        commodity: Commodity name to summarize.
+        district: Optional district to restrict the summary.
+        market: Optional market to restrict the summary.
+
+    Returns:
+        Dict containing commodity, district, total_markets, average_modal_price,
+        highest_modal_price and lowest_modal_price, or a message on no data.
+    """
     data = get_commodity_data(CSV_FILE, commodity, district, market)
 
     if data.empty:
@@ -41,11 +66,36 @@ def get_summary(commodity, district=None, market=None):
         "highest_modal_price": modal_prices.max(),
         "lowest_modal_price": modal_prices.min()
     }
+
+
+# Returns all available commodities in the dataset
 def get_commodities():
+    """Return sorted list of available commodities in the CSV.
+
+    Returns:
+        List of commodity names.
+    """
     return get_all_commodities(CSV_FILE)
 
+
+# Returns all available districts in the dataset
 def get_districts():
+    """Return sorted list of available districts in the CSV.
+
+    Returns:
+        List of district names.
+    """
     return get_all_districts(CSV_FILE)
 
+
+# Returns markets for a selected district
 def get_markets(district):
+    """Return sorted list of markets for the given district.
+
+    Args:
+        district: District name to filter markets by.
+
+    Returns:
+        List of market names.
+    """
     return get_markets_by_district(CSV_FILE, district)
