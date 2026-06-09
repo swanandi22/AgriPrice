@@ -1,6 +1,6 @@
 from agmarknet_loader import get_markets_by_district
 from fastapi import FastAPI
-from agmarknet import get_prices, get_summary, get_commodities, get_districts, get_markets
+from agmarknet import get_prices, get_summary, get_commodities, get_districts, get_markets, get_top_markets, get_dashboard
 
 app = FastAPI()
 
@@ -70,3 +70,18 @@ def markets(district: str):
         List of market names.
     """
     return get_markets(district)
+
+
+@app.get("/top-markets")
+def top_markets(
+    commodity: str,
+    limit: int = 5
+):
+    return get_top_markets(
+        commodity,
+        limit
+    )
+
+@app.get("/dashboard")
+def dashboard(commodity: str):
+    return get_dashboard(commodity)
