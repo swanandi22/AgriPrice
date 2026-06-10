@@ -1,7 +1,7 @@
 from agmarknet_loader import get_markets_by_district
 from fastapi import FastAPI
 from agmarknet import get_prices, get_summary, get_commodities, get_districts, get_markets, get_top_markets, get_dashboard
-
+from agmarknet import get_commodities_from_db, get_markets_from_db, get_prices_from_db, get_summary_from_db, get_districts_from_db, get_top_markets_from_db, get_dashboard_from_db
 app = FastAPI()
 
 
@@ -25,7 +25,7 @@ def prices(commodity: str, district: str = None, market: str = None):
     Returns:
         JSON-serializable list of price records or message dict.
     """
-    return get_prices(commodity, district, market)
+    return get_prices_from_db(commodity, district, market)
 
 
 # Returns aggregated summary statistics for a commodity
@@ -41,21 +41,21 @@ def summary(commodity:str, district:str = None, market:str = None):
     Returns:
         JSON-serializable dictionary with summary statistics.
     """
-    return get_summary(commodity, district, market)
+    return get_summary_from_db(commodity, district, market)
 
 
 # Returns available commodities
 @app.get("/commodities")
 def commodities():
     """API endpoint that returns all available commodities."""
-    return get_commodities()
+    return get_commodities_from_db()
 
 
 # Returns available districts
 @app.get("/districts")
 def districts():
     """API endpoint that returns all available districts."""
-    return get_districts()
+    return get_districts_from_db()
 
 
 # Returns markets for a given district
@@ -69,7 +69,7 @@ def markets(district: str):
     Returns:
         List of market names.
     """
-    return get_markets(district)
+    return get_markets_from_db(district)
 
 
 @app.get("/top-markets")
@@ -77,11 +77,11 @@ def top_markets(
     commodity: str,
     limit: int = 5
 ):
-    return get_top_markets(
+    return get_top_markets_from_db(
         commodity,
         limit
     )
 
 @app.get("/dashboard")
 def dashboard(commodity: str):
-    return get_dashboard(commodity)
+    return get_dashboard_from_db(commodity)

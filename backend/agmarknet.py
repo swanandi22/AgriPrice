@@ -166,3 +166,244 @@ def get_commodities_from_db():
     conn.close()
 
     return [row[0] for row in rows]
+
+
+def get_markets_from_db(district):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT market_name
+        FROM markets
+        WHERE district = %s
+        ORDER BY market_name
+        """,
+        (district,)
+    )
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return [row[0] for row in rows]
+
+def get_prices_from_db(commodity, district=None, market=None):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT
+            m.district,
+            m.market_name,
+            dp.min_price,
+            dp.max_price,
+            dp.modal_price
+        FROM daily_prices dp
+        JOIN commodities c
+            ON dp.commodity_id = c.id
+        JOIN markets m
+            ON dp.market_id = m.id
+        WHERE c.name = %s
+    """
+
+    params = [commodity]
+
+    if district:
+        query += " AND m.district = %s"
+        params.append(district)
+
+    if market:
+        query += " AND m.market_name = %s"
+        params.append(market)
+
+    cursor.execute(query, params)
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return [
+        {
+            "District": row[0],
+            "Market": row[1],
+            "Min Price": float(row[2]),
+            "Max Price": float(row[3]),
+            "Modal Price": float(row[4]),
+        }
+        for row in rows
+    ]
+
+
+def get_summary_from_db(commodity, district=None, market=None):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT
+            AVG(dp.modal_price),
+            MAX(dp.modal_price),
+            MIN(dp.modal_price),
+            COUNT(*)
+        FROM daily_prices dp
+        JOIN commodities c
+            ON dp.commodity_id = c.id
+        JOIN markets m
+            ON dp.market_id = m.id
+        WHERE c.name = %s
+    """
+
+    params = [commodity]
+
+    if district:
+        query += " AND m.district = %s"
+        params.append(district)
+
+    if market:
+        query += " AND m.market_name = %s"
+        params.append(market)
+
+    cursor.execute(query, params)
+
+    result = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return {
+        "commodity": commodity,
+        "district": district,
+        "market": market,
+        "average_modal_price": round(float(result[0]), 2),
+        "highest_modal_price": float(result[1]),
+        "lowest_modal_price": float(result[2]),
+        "total_markets": result[3]
+    }
+
+
+def get_districts_from_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT DISTINCT district
+        FROM markets
+        ORDER BY district
+    """)
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return [row[0] for row in rows]
+
+
+def get_top_markets_from_db(commodity, limit=5):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            m.market_name,
+            m.district,
+            dp.modal_price
+        FROM daily_prices dp
+        JOIN commodities c
+            ON dp.commodity_id = c.id
+        JOIN markets m
+            ON dp.market_id = m.id
+        WHERE c.name = %s
+        ORDER BY dp.modal_price DESC
+        LIMIT %s
+        """,
+        (commodity, limit)
+    )
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return [
+        {
+            "Market": row[0],
+            "District": row[1],
+            "Modal Price": float(row[2])
+        }
+        for row in rows
+    ]
+
+
+def get_dashboard_from_db(commodity):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            m.market_name,
+            dp.modal_price
+        FROM daily_prices dp
+        JOIN commodities c
+            ON dp.commodity_id = c.id
+        JOIN markets m
+            ON dp.market_id = m.id
+        WHERE c.name = %s
+        ORDER BY dp.modal_price DESC
+        LIMIT 1
+        """,
+        (commodity,)
+    )
+
+    highest = cursor.fetchone()
+
+    cursor.execute(
+        """
+        SELECT
+            m.market_name,
+            dp.modal_price
+        FROM daily_prices dp
+        JOIN commodities c
+            ON dp.commodity_id = c.id
+        JOIN markets m
+            ON dp.market_id = m.id
+        WHERE c.name = %s
+        ORDER BY dp.modal_price ASC
+        LIMIT 1
+        """,
+        (commodity,)
+    )
+
+    lowest = cursor.fetchone()
+
+    cursor.execute(
+        """
+        SELECT
+            AVG(dp.modal_price),
+            COUNT(*)
+        FROM daily_prices dp
+        JOIN commodities c
+            ON dp.commodity_id = c.id
+        WHERE c.name = %s
+        """,
+        (commodity,)
+    )
+
+    stats = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return {
+        "commodity": commodity,
+        "highest_market": highest[0],
+        "highest_price": float(highest[1]),
+        "lowest_market": lowest[0],
+        "lowest_price": float(lowest[1]),
+        "average_price": round(float(stats[0]), 2),
+        "total_markets": stats[1]
+    }
