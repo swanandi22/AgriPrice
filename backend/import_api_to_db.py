@@ -1,11 +1,12 @@
 import requests
 import time
 
+from db import get_connection
+
 API_KEY = "579b464db66ec23bdd0000018a1fd09c08444906593b3a30ddcd2bbe"
 
 
 def fetch_agmarknet_data(limit=50, offset=0):
-
     url = "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070"
 
     params = {
@@ -38,10 +39,138 @@ def fetch_agmarknet_data(limit=50, offset=0):
 
     return []
 
-if __name__ == "__main__":
+
+def import_live_data():
+
+    # Fetch data FIRST
     records = fetch_agmarknet_data(limit=50)
 
-    print("Records fetched:", len(records))
+    if not records:
+        print("No records fetched.")
+        return
 
-    if records:
-        print(records[0])
+    print(f"Fetched {len(records)} records")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Only clear old data AFTER successful fetch
+    cursor.execute("DELETE FROM daily_prices")
+    cursor.execute("DELETE FROM markets")
+    cursor.execute("DELETE FROM commodities")
+    conn.commit()
+
+    for record in records:
+
+        # Insert commodity
+        cursor.execute(
+            """
+            INSERT INTO commodities (name)
+            VALUES (%s)
+            ON CONFLICT (name) DO NOTHING
+            """,
+            (record["commodity"],)
+        )
+
+        # Insert market
+        cursor.execute(
+            """
+            INSERT INTO markets (
+                market_name,
+                district,
+                state
+            )
+            VALUES (%s, %s, %s)
+            """,
+            (
+                record["market"],
+                record["district"],
+                record["state"]
+            )
+        )
+
+        # Get commodity id
+        cursor.execute(
+            """
+            SELECT id
+            FROM commodities
+            WHERE name = %s
+            """,
+            (record["commodity"],)
+        )
+
+        commodity_id = cursor.fetchone()[0]
+
+        # Get market id
+        cursor.execute(
+            """
+            SELECT id
+            FROM markets
+            WHERE market_name = %s
+            AND district = %s
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (
+                record["market"],
+                record["district"]
+            )
+        )
+
+        market_id = cursor.fetchone()[0]
+
+        # Insert daily price
+        cursor.execute(
+            """
+            INSERT INTO daily_prices (
+                commodity_id,
+                market_id,
+                min_price,
+                max_price,
+                modal_price,
+                price_unit,
+                arrival_quantity,
+                arrival_unit,
+                arrival_date
+            )
+            VALUES (
+                %s,%s,%s,%s,%s,%s,%s,%s,
+                TO_DATE(%s, 'DD/MM/YYYY')
+            )
+            """,
+            (
+                commodity_id,
+                market_id,
+                record["min_price"],
+                record["max_price"],
+                record["modal_price"],
+                "Rs/Quintal",
+                None,
+                None,
+                record["arrival_date"]
+            )
+        )
+
+    conn.commit()
+
+    cursor.execute("SELECT COUNT(*) FROM commodities")
+    commodities_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM markets")
+    markets_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT COUNT(*) FROM daily_prices")
+    prices_count = cursor.fetchone()[0]
+
+    print(f"Commodities: {commodities_count}")
+    print(f"Markets: {markets_count}")
+    print(f"Daily Prices: {prices_count}")
+
+    cursor.close()
+    conn.close()
+
+    print("Live data imported successfully!")
+
+
+if __name__ == "__main__":
+    import_live_data()
