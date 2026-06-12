@@ -54,11 +54,6 @@ def import_live_data():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Only clear old data AFTER successful fetch
-    cursor.execute("DELETE FROM daily_prices")
-    cursor.execute("DELETE FROM markets")
-    cursor.execute("DELETE FROM commodities")
-    conn.commit()
 
     for record in records:
 
@@ -72,15 +67,14 @@ def import_live_data():
             (record["commodity"],)
         )
 
-        # Insert market
+        # Check if market already exists
         cursor.execute(
             """
-            INSERT INTO markets (
-                market_name,
-                district,
-                state
-            )
-            VALUES (%s, %s, %s)
+            SELECT id
+            FROM markets
+            WHERE market_name = %s
+            AND district = %s
+            AND state = %s
             """,
             (
                 record["market"],
@@ -88,6 +82,26 @@ def import_live_data():
                 record["state"]
             )
         )
+
+        existing_market = cursor.fetchone()
+
+        # Insert only if market doesn't exist
+        if not existing_market:
+            cursor.execute(
+                """
+                INSERT INTO markets (
+                    market_name,
+                    district,
+                    state
+                )
+                VALUES (%s, %s, %s)
+                """,
+                (
+                    record["market"],
+                    record["district"],
+                    record["state"]
+                )
+            )
 
         # Get commodity id
         cursor.execute(

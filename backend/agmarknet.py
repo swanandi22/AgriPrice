@@ -407,3 +407,39 @@ def get_dashboard_from_db(commodity):
         "average_price": round(float(stats[0]), 2),
         "total_markets": stats[1]
     }
+
+
+def get_historical_prices_from_db(commodity, market):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            dp.arrival_date,
+            AVG(dp.modal_price)
+        FROM daily_prices dp
+        JOIN commodities c
+            ON dp.commodity_id = c.id
+        JOIN markets m
+            ON dp.market_id = m.id
+        WHERE c.name = %s
+        AND m.market_name = %s
+        GROUP BY dp.arrival_date
+        ORDER BY dp.arrival_date
+        """,
+        (commodity, market)
+    )
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return [
+        {
+            "date": row[0],
+            "modal_price": float(row[1])
+        }
+        for row in rows
+    ]

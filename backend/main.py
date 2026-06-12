@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from agmarknet import get_prices, get_summary, get_commodities, get_districts, get_markets, get_top_markets, get_dashboard
-from agmarknet import get_commodities_from_db, get_markets_from_db, get_prices_from_db, get_summary_from_db, get_districts_from_db, get_top_markets_from_db, get_dashboard_from_db
+from agmarknet import get_commodities_from_db, get_markets_from_db, get_prices_from_db, get_summary_from_db, get_districts_from_db, get_top_markets_from_db, get_dashboard_from_db, get_historical_prices_from_db
 from pydantic import BaseModel
 from db import get_connection
 from auth import hash_password, verify_password
@@ -88,6 +88,20 @@ def top_markets(
 @app.get("/dashboard")
 def dashboard(commodity: str):
     return get_dashboard_from_db(commodity)
+
+
+@app.get("/historical-prices")
+def historical_prices(commodity: str, market: str):
+    """Return historical modal prices for a commodity in a specific market.
+
+    Args:
+        commodity: Commodity name to query.
+        market: Market name to filter the historical series.
+
+    Returns:
+        A list of date and modal price points for the selected market.
+    """
+    return get_historical_prices_from_db(commodity, market)
 
 
 class RegisterRequest(BaseModel):
